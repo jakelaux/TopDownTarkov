@@ -51,7 +51,7 @@ def main():
     player = Player(64, 54, 16, 16, RED)
     start = pg.math.Vector2(player.center)
     end = start
-    length = 50
+    length = 15
 
     #gameplay loop
     clock = pg.time.Clock()
@@ -101,8 +101,8 @@ def main():
         #pg.draw.rect(screen,(150,200,20),player)
         screen.fill(BLACK)
         player.update(start.x,start.y,16, 16,RED)
-        player.drawGun(screen, RED, start, end)
         player.draw(screen)
+        player.drawGun(screen, GREEN, start, end)
         clock.tick(60)
 
 pg.init()
