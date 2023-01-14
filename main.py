@@ -1,6 +1,7 @@
 import sys
 import random
 import pygame as pg
+import pygame.mouse
 from pygame.locals import *
 
 # === CONSTANS === (UPPER_CASE names)
@@ -37,10 +38,11 @@ class Player:
         self.height = height
         self.rect = pg.Rect(x,y,width,height)
         self.center = self.rect.center
-    def draw(self,surface):
-        pg.draw.rect(surface, self.color, self.rect)
     def drawGun(self,screen,color,start,end):
         self.gun = pg.draw.line(screen, color, start, end)
+    def draw(self,surface):
+        pg.draw.rect(surface, self.color, self.rect)
+   
 
 class Scav(pg.sprite.Sprite):
     def __init__(self, x, y):
@@ -50,11 +52,20 @@ class Scav(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.x = x
         self.rect.y = y
+        self.health = random.randint(200,500)
     def update(self):
         dir_x = scav_patrol_dir(random.randint(1,3))
         dir_y = scav_patrol_dir(random.randint(1,3))
         self.rect.x += dir_x
         self.rect.y += dir_y
+    def take_damage(self, damage):
+        self.health -= damage
+        print(self.health)
+        if self.health <= 0:
+            self.die()
+    def die(self):
+        self.kill()
+        
 
 def scav_patrol_dir(num):
     if num == 1:
@@ -80,6 +91,22 @@ def main():
     #gameplay loop
     clock = pg.time.Clock()
     is_running = True
+
+    # Create the crosshair cursor
+    crosshair = (
+        "   X    ",
+        "   X    ",
+        "   X    ",
+        "XXXXXXX ",
+        "   X    ",
+        "   X    ",
+        "   X    ",
+        "        "
+    )
+    # Create the cursor using the crosshair image
+    cursor, mask = pg.cursors.compile(crosshair, ".", "X")
+    # Set the cursor using the cursor and mask
+    pg.mouse.set_cursor((8, 8), (4, 4), cursor, mask)
 
     bullets = []
     while is_running:
@@ -109,6 +136,13 @@ def main():
                     bullet = Bullet(position, speed)
                     bullets.append(bullet)
         
+        for bullet in bullets:
+            for scav in scavs:
+                if bullet.position.x > scav.rect.x and bullet.position.x < scav.rect.x + scav.rect.width:
+                    if bullet.position.y > scav.rect.y and bullet.position.y < scav.rect.y + scav.rect.height:
+                        scav.take_damage(60)
+                        bullets.pop(bullets.index(bullet))
+
         pg.display.update()
         mv = 4
         keys = pg.key.get_pressed()
