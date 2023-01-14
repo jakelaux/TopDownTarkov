@@ -1,12 +1,11 @@
 import sys
+import random
 import pygame as pg
 from pygame.locals import *
 
 # === CONSTANS === (UPPER_CASE names)
-
 BLACK = (  0,   0,   0)
 WHITE = (255, 255, 255)
-
 RED   = (255,   0,   0)
 GREEN = (  0, 255,   0)
 BLUE  = (  0,   0, 255)
@@ -18,7 +17,6 @@ class Bullet:
     def __init__(self, position, speed):
         self.position = position
         self.speed = speed
-
     def update(self):
         self.position += self.speed
 
@@ -44,15 +42,41 @@ class Player:
     def drawGun(self,screen,color,start,end):
         self.gun = pg.draw.line(screen, color, start, end)
 
+class Scav(pg.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        self.image = pg.Surface((16,16))
+        self.image.fill(RED)
+        self.rect = self.image.get_rect()
+        self.rect.x = x
+        self.rect.y = y
+    def update(self):
+        dir_x = scav_patrol_dir(random.randint(1,3))
+        dir_y = scav_patrol_dir(random.randint(1,3))
+        self.rect.x += dir_x
+        self.rect.y += dir_y
+
+def scav_patrol_dir(num):
+    if num == 1:
+        return 2
+    elif num == 2:
+        return -2
+    elif num == 3:
+        return 0
+
 def main():
     #init
     screen = pg.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
     #objects
-    player = Player(64, 54, 16, 16, RED)
+    #PMC
+    player = Player(64, 54, 16, 16, WHITE)
     start = pg.math.Vector2(player.center)
     end = start
     length = 15
-
+    #Scavs
+    scav = Scav(500,500)
+    scavs = pg.sprite.Group()
+    scavs.add(scav)
     #gameplay loop
     clock = pg.time.Clock()
     is_running = True
@@ -100,12 +124,15 @@ def main():
             start.y -= mv
         #pg.draw.rect(screen,(150,200,20),player)
         screen.fill(BLACK)
-        player.update(start.x,start.y,16, 16,RED)
+        player.update(start.x,start.y,16, 16,WHITE)
         player.draw(screen)
         player.drawGun(screen, GREEN, start, end)
+        scavs.draw(screen)
+        scavs.update()
         clock.tick(60)
 
-pg.init()
-main()
-pg.quit()
-sys.exit()
+if __name__ == "__main__":
+    pg.init()
+    main()
+    pg.quit()
+    sys.exit()
