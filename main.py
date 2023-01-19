@@ -1,8 +1,9 @@
 import sys
-import random
-import pygame as pg
+import pygame
 import pygame.mouse
 from pygame.locals import *
+from player import Player
+from scav import Scav
 
 # === CONSTANS === (UPPER_CASE names)
 BLACK = (  0,   0,   0)
@@ -20,78 +21,10 @@ class Bullet:
         self.speed = speed
     def update(self):
         self.position += self.speed
-
-class Player:
-    def __init__(self,x,y,width,height,color):
-        self.x = x
-        self.y = y 
-        self.width = width
-        self.height = height
-        self.color = color
-        self.rect = pg.Rect(x,y,width,height)
-        self.center = self.rect.center
-    def update(self,x,y,width,height,color):
-        self.x = x
-        self.y = y
-        self.color = color
-        self.width = width
-        self.height = height
-        self.rect = pg.Rect(x,y,width,height)
-        self.center = self.rect.center
-    def drawGun(self,screen,color,start,end):
-        self.gun = pg.draw.line(screen, color, start, end)
-    def draw(self,surface):
-        pg.draw.rect(surface, self.color, self.rect)
    
-
-class Scav(pg.sprite.Sprite):
-    def __init__(self, x, y):
-        super().__init__()
-        self.image = pg.Surface((16,16))
-        self.image.fill(RED)
-        self.rect = self.image.get_rect()
-        self.rect.x = x
-        self.rect.y = y
-        self.health = random.randint(200,500)
-    def update(self):
-        dir_x = scav_patrol_dir(random.randint(1,3))
-        dir_y = scav_patrol_dir(random.randint(1,3))
-        self.rect.x += dir_x
-        self.rect.y += dir_y
-    def take_damage(self, damage):
-        self.health -= damage
-        print(self.health)
-        if self.health <= 0:
-            self.die()
-    def die(self):
-        self.kill()
-        
-
-def scav_patrol_dir(num):
-    if num == 1:
-        return 2
-    elif num == 2:
-        return -2
-    elif num == 3:
-        return 0
-
 def main():
-    #init
-    screen = pg.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
-    #objects
-    #PMC
-    player = Player(64, 54, 16, 16, WHITE)
-    start = pg.math.Vector2(player.center)
-    end = start
-    length = 15
-    #Scavs
-    scav = Scav(500,500)
-    scavs = pg.sprite.Group()
-    scavs.add(scav)
-    #gameplay loop
-    clock = pg.time.Clock()
-    is_running = True
-
+    # Initialize the screen
+    screen = pygame.display.set_mode((SCREEN_WIDTH,SCREEN_HEIGHT))
     # Create the crosshair cursor
     crosshair = (
         "   X    ",
@@ -104,12 +37,44 @@ def main():
         "        "
     )
     # Create the cursor using the crosshair image
-    cursor, mask = pg.cursors.compile(crosshair, ".", "X")
+    cursor, mask = pygame.cursors.compile(crosshair, ".", "X")
     # Set the cursor using the cursor and mask
-    pg.mouse.set_cursor((8, 8), (4, 4), cursor, mask)
+    pygame.mouse.set_cursor((8, 8), (4, 4), cursor, mask)
 
+    #Player
+    player = Player(64, 54, 16, 16, WHITE)
+    start = pygame.math.Vector2(player.center)
+    end = start
+    length = 15
+
+    #Scavs
+    scav = Scav(500,500)
+    scavs = pygame.sprite.Group()
+    scavs.add(scav)
+
+    #gameplay loop
+    clock = pygame.time.Clock()
+    is_running = True
     bullets = []
     while is_running:
+        # Handle events 
+        for event in pygame.event.get():
+            #global events
+            if event.type == pygame.QUIT:
+                is_running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    is_running = False
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse = pygame.mouse.get_pos()
+                distance = mouse - start
+                position = pygame.math.Vector2(start)
+                speed = distance.normalize()*8
+                if len(bullets) < 5:
+                    bullet = Bullet(position, speed)
+                    bullets.append(bullet)
+
+        #Handle bullets moving off the screen
         for i, bullet in enumerate(bullets):
             bullet.update()
             if bullet.position.x < 0 or bullet.position.x > SCREEN_WIDTH or bullet.position.y < 0 or bullet.position.y > SCREEN_HEIGHT:
@@ -117,25 +82,11 @@ def main():
             else:
                 pos_x = int(bullet.position.x)
                 pos_y = int(bullet.position.y)
-                pg.draw.line(screen, (0,255,0), (pos_x,pos_y), (pos_x,pos_y))
-        mouse = pg.mouse.get_pos()
+                pygame.draw.line(screen, (0,255,0), (pos_x,pos_y), (pos_x,pos_y))
+        mouse = pygame.mouse.get_pos()
         end = start + (mouse - start).normalize() * length
-        for event in pg.event.get():
-            #global events
-            if event.type == pg.QUIT:
-                is_running = False
-            elif event.type == pg.KEYDOWN:
-                if event.key == pg.K_ESCAPE:
-                    is_running = False
-            elif event.type == pg.MOUSEBUTTONDOWN:
-                mouse = pg.mouse.get_pos()
-                distance = mouse - start
-                position = pg.math.Vector2(start)
-                speed = distance.normalize()*8
-                if len(bullets) < 5:
-                    bullet = Bullet(position, speed)
-                    bullets.append(bullet)
         
+        # handle bullets damaging scav ** refacrot this to the enumberate bullets loop so this isn't even more inefficient
         for bullet in bullets:
             for scav in scavs:
                 if bullet.position.x > scav.rect.x and bullet.position.x < scav.rect.x + scav.rect.width:
@@ -143,20 +94,22 @@ def main():
                         scav.take_damage(60)
                         bullets.pop(bullets.index(bullet))
 
-        pg.display.update()
+        pygame.display.update()
+
+        # Player Movement
         mv = 4
-        keys = pg.key.get_pressed()
-        if keys[pg.K_LSHIFT]:
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_LSHIFT]:
             mv = 6
-        if keys[pg.K_a]:
+        if keys[pygame.K_a]:
             start.x -= mv
-        if keys[pg.K_d]:
+        if keys[pygame.K_d]:
             start.x += mv
-        if keys[pg.K_s]:
+        if keys[pygame.K_s]:
             start.y += mv
-        if keys[pg.K_w]:
+        if keys[pygame.K_w]:
             start.y -= mv
-        #pg.draw.rect(screen,(150,200,20),player)
+
         screen.fill(BLACK)
         player.update(start.x,start.y,16, 16,WHITE)
         player.draw(screen)
@@ -166,7 +119,7 @@ def main():
         clock.tick(60)
 
 if __name__ == "__main__":
-    pg.init()
+    pygame.init()
     main()
-    pg.quit()
+    pygame.quit()
     sys.exit()
